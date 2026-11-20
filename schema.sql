@@ -1,0 +1,7 @@
+-- NuRoots relational model. Already initialized in D1 database nuroots.
+CREATE TABLE IF NOT EXISTS people (id TEXT PRIMARY KEY, given_name TEXT NOT NULL, family_name TEXT NOT NULL DEFAULT '', preferred_name TEXT, birth_date TEXT, death_date TEXT, birth_place TEXT, death_place TEXT, biography TEXT, living INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE IF NOT EXISTS relationships (id TEXT PRIMARY KEY, person1_id TEXT NOT NULL REFERENCES people(id), person2_id TEXT NOT NULL REFERENCES people(id), type TEXT NOT NULL CHECK(type IN ('parent','partner')), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(person1_id,person2_id,type), CHECK(person1_id<>person2_id));
+CREATE TABLE IF NOT EXISTS members (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE COLLATE NOCASE, display_name TEXT, role TEXT NOT NULL DEFAULT 'viewer' CHECK(role IN ('owner','editor','viewer')), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE IF NOT EXISTS change_log (id TEXT PRIMARY KEY, actor_email TEXT NOT NULL, action TEXT NOT NULL, entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, old_value TEXT, new_value TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE INDEX IF NOT EXISTS idx_relationships_p1 ON relationships(person1_id);
+CREATE INDEX IF NOT EXISTS idx_relationships_p2 ON relationships(person2_id);
