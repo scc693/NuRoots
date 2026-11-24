@@ -11,12 +11,13 @@ export const securityHeaders = {
   "X-Robots-Tag": "noindex",
 };
 
-export function page(title, content, { status = 200, error, script } = {}) {
+export function page(title, content, { status = 200, error, script, styles = "" } = {}) {
   const nonce = script ? crypto.randomUUID() : "";
+  const safeTitle = escapeHtml(title);
 
   return new Response(`<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${title} · NuRoots</title>
+<title>${safeTitle} · NuRoots</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#f5f5ef;color:#24362b;font:18px/1.5 system-ui,sans-serif}
@@ -24,22 +25,23 @@ header{background:white;border-bottom:1px solid #dbe7d8;padding:16px max(20px,ca
 header a{font:bold 29px Georgia,serif;text-decoration:none;color:#214936}
 header span{color:#a36825}
 main{max-width:560px;margin:36px auto;padding:0 20px}
-article{background:white;border:1px solid #dbe7d8;border-radius:20px;padding:clamp(20px,5vw,36px)}
+article{overflow-wrap:anywhere;background:white;border:1px solid #dbe7d8;border-radius:20px;padding:clamp(20px,5vw,36px)}
 h1,h2{font-family:Georgia,serif;line-height:1.1}
 h1{font-size:clamp(34px,7vw,44px);margin:0 0 16px}
 h2{font-size:27px;margin:28px 0 12px}
 p{margin:0 0 18px}
 label{display:block;font-weight:650;margin:18px 0 6px}
 input,select,button{width:100%;min-height:48px;border:1px solid #7c9080;border-radius:10px;padding:10px 12px;font:inherit;color:inherit;background:white}
-button{width:auto;background:#28563d;color:white;margin:20px 0 16px;padding-inline:20px;font-weight:700;cursor:pointer}
+button{max-width:100%;width:auto;background:#28563d;color:white;margin:20px 0 16px;padding-inline:20px;font-weight:700;cursor:pointer}
 a{color:#28563d;text-underline-offset:3px}
 :focus-visible{outline:3px solid #a36825;outline-offset:3px}
 .help{display:block;margin-top:6px;font-size:16px;color:#4b6252}
 .error{padding:12px;border:1px solid #a85235;background:#fff1e9;border-radius:10px}
 .action{margin-top:16px}
+${styles}
 </style></head><body>
 <header><a href="/">Nu<span>Roots</span></a></header>
-<main><article><h1>${title}</h1>${error ? `<p class="error" role="alert">${escapeHtml(error)}</p>` : ""}${content}</article></main>
+<main><article><h1>${safeTitle}</h1>${error ? `<p class="error" role="alert">${escapeHtml(error)}</p>` : ""}${content}</article></main>
 ${script ? `<script nonce="${nonce}">${script}</script>` : ""}</body></html>`, {
     status,
     headers: {
@@ -84,9 +86,11 @@ export function joinPage(error, status, { email, code = "" } = {}) {
   ` });
 }
 
-export function accountPage(member, error, status) {
+export function accountPage(member, features, error, status) {
   return page("Your family account", `<p>Signed in as <strong>${escapeHtml(member.email)}</strong> · ${escapeHtml(member.role)}</p>
-  <p>The family tree is still in preview. <a href="/">Explore the sample tree</a>.</p>
+  ${features.tree ? '<p><a href="/tree">Explore the family tree preview</a></p>' : '<p>The family tree is still in preview. <a href="/">Explore the sample tree</a>.</p>'}
+  ${features.accountAdmin && member.role === "owner" ? '<p><a href="/account/access">Manage family account access</a></p>' : ""}
+  ${features.communities ? '<p><a href="/communities">Your branches and circles</a></p>' : ""}
   ${member.role === "owner" ? `<h2>Invite a family member</h2>
   <form method="post" action="/account/invitations">
     <label for="invite-email">Their email address</label>

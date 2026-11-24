@@ -51,7 +51,7 @@ function sessionCookie(token, age) {
   return `${cookieName}=${token}; Path=/; Max-Age=${age}; Secure; HttpOnly; SameSite=Lax`;
 }
 
-async function currentMember(db, request, now) {
+export async function currentMember(db, request, now = Math.floor(Date.now() / 1000)) {
   const token = readSessionToken(request);
   if (!token) return null;
 
@@ -65,15 +65,16 @@ async function startSession(db, memberId, request, now) {
   const token = randomHex(32);
   const oldToken = readSessionToken(request);
   const oldHash = oldToken ? await tokenHash(oldToken) : null;
-  await db.batch([
+  const [, session] = await db.batch([
     db.prepare("DELETE FROM auth_sessions WHERE expires_at <= ? OR token_hash = ?").bind(now, oldHash),
     db.prepare("INSERT INTO auth_sessions (token_hash, member_id, expires_at) VALUES (?, ?, ?)")
       .bind(await tokenHash(token), memberId, now + sessionSeconds),
   ]);
+  if (!session.meta.changes) return signInPage("That email or password didn’t match. Please try again.", 401);
   return redirect("/account", sessionCookie(token, sessionSeconds));
 }
 
-async function readFields(request) {
+export async function readFields(request) {
   const type = request.headers.get("Content-Type")?.split(";")[0].trim().toLowerCase();
   if (type !== "application/x-www-form-urlencoded" || !request.body) return null;
 
@@ -170,11 +171,11 @@ async function join(request, env, fields, now) {
   return redirect("/signin");
 }
 
-async function createInvitation(db, member, fields, now, origin) {
+async function createInvitation(db, member, fields, now, origin, features) {
   const email = emailAddress(fields);
   const role = fields.get("role");
   if (!email || !["editor", "viewer"].includes(role)) {
-    return accountPage(member, "Enter a valid email address and choose an access level.", 400);
+    return accountPage(member, features, "Enter a valid email address and choose an access level.", 400);
   }
 
   const code = randomHex(32);
@@ -186,7 +187,7 @@ async function createInvitation(db, member, fields, now, origin) {
         role = excluded.role, expires_at = excluded.expires_at`)
       .bind(email, await tokenHash(code), role, now + inviteSeconds, email),
   ]);
-  if (!result.meta.changes) return accountPage(member, "That email already has a family account.", 409);
+  if (!result.meta.changes) return accountPage(member, features, "That email already has a family account.", 409);
   return invitationPage(`${origin}/join#${code}`);
 }
 
@@ -217,11 +218,16 @@ export async function handleAuth(request, env, url) {
     if (path === "/account" || path === "/account/invitations") {
       const member = await currentMember(env.DB, request, now);
       if (!member) return redirect("/signin");
-      if (path === "/account") return accountPage(member);
-      if (member.role !== "owner") return accountPage(member, "Only the family organizer can create invitations.", 403);
+      const features = {
+        tree: env.TREE_PREVIEW_ENABLED === true,
+        communities: env.COMMUNITIES_PREVIEW_ENABLED === true,
+        accountAdmin: env.ACCOUNT_ADMIN_PREVIEW_ENABLED === true,
+      };
+      if (path === "/account") return accountPage(member, features);
+      if (member.role !== "owner") return accountPage(member, features, "Only the family organizer can create invitations.", 403);
       const fields = await readFields(request);
-      return fields ? await createInvitation(env.DB, member, fields, now, url.origin)
-        : accountPage(member, "Couldn’t read the invitation form. Please try again.", 400);
+      return fields ? await createInvitation(env.DB, member, fields, now, url.origin, features)
+        : accountPage(member, features, "Couldn’t read the invitation form. Please try again.", 400);
     }
     const fields = await readFields(request);
     if (!fields) return page("Form unavailable", '<a href="/signin">Return to sign in</a>', { status: 400 });

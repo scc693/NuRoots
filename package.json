@@ -1,0 +1,23 @@
+{
+  "name": "nuroots",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:init": "wrangler d1 execute DB --local --file schema.sql && wrangler d1 migrations apply DB --local",
+    "db:seed": "wrangler d1 execute DB --local --file fixtures/family-tree.sql",
+    "dev": "wrangler dev --local",
+    "test": "node --test",
+    "db:rehearse": "node scripts/rehearse-restore.mjs",
+    "db:seed:community": "wrangler d1 execute DB --local --file fixtures/community-preview.sql",
+    "preview": "node scripts/local-preview.mjs",
+    "test:browser": "node scripts/browser-smoke.mjs"
+  },
+  "devDependencies": {
+    "axe-core": "4.14.1",
+    "playwright-core": "1.65.1",
+    "wrangler": "4.166.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

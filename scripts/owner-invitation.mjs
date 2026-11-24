@@ -1,8 +1,10 @@
 import { createHash, randomBytes } from "node:crypto";
 
-const email = (process.argv[2] ?? "").trim().toLowerCase();
-if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-  console.error("Usage: node scripts/owner-invitation.mjs OWNER_EMAIL");
+const [, , address = "", mode, ...extra] = process.argv;
+const email = address.trim().toLowerCase();
+if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+    (mode !== undefined && mode !== "--local") || extra.length) {
+  console.error("Usage: node scripts/owner-invitation.mjs OWNER_EMAIL [--local]");
   process.exit(1);
 }
 
@@ -15,4 +17,5 @@ SELECT ${quotedEmail}, '${hash}', 'owner', unixepoch() + 172800
 WHERE NOT EXISTS (SELECT 1 FROM members WHERE role = 'owner' OR email = ${quotedEmail})
 ON CONFLICT(email) DO UPDATE SET token_hash = excluded.token_hash, expires_at = excluded.expires_at
 WHERE auth_invites.role = 'owner';`);
-console.error(`Private setup link (share only with the owner): https://nuroots.clearteck.org/join#${code}`);
+const origin = mode === "--local" ? "http://localhost:8787" : "https://nuroots.clearteck.org";
+console.error(`Private setup link (share only with the owner): ${origin}/join#${code}`);

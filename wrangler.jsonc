@@ -1,0 +1,20 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "nuroots-local",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-07-14",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "vars": {
+    "TREE_PREVIEW_ENABLED": true,
+    "COMMUNITIES_PREVIEW_ENABLED": true,
+    "ACCOUNT_ADMIN_PREVIEW_ENABLED": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nuroots-local",
+      "database_id": "4f0583c5-93ba-4fa7-8553-5bf18f04cab3"
+    }
+  ]
+}
